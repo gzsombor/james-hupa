@@ -56,6 +56,7 @@ public class LoginPresenter extends WidgetPresenter<LoginPresenter.Display>{
         public HasValue<String> getUserNameValue();
         public HasValue<String> getPasswordValue();
         public Focusable getUserNameFocus();
+        public Focusable getPasswordFocus();
         public void setLoading(boolean loading);
     }
     
@@ -96,9 +97,12 @@ public class LoginPresenter extends WidgetPresenter<LoginPresenter.Display>{
      * Reset display
      */
     private void doReset() {
-        display.getUserNameValue().setValue("");
         display.getPasswordValue().setValue("");
-        display.getUserNameFocus().setFocus(true);
+        if ("".equals(display.getUserNameValue())) {
+            display.getUserNameFocus().setFocus(true);
+        } else {
+        	display.getPasswordFocus().setFocus(true);
+        }
     }
 
     @Override

@@ -181,6 +181,10 @@ public class LoginView extends Composite implements KeyUpHandler,LoginPresenter.
         return usernameTextBox;
     }
 
+    
+    public Focusable getPasswordFocus() {
+    	return passwordTextBox;
+    }
 
     /*
      * (non-Javadoc)
@@ -210,7 +214,11 @@ public class LoginView extends Composite implements KeyUpHandler,LoginPresenter.
     @Override
     public void onAttach() {
        super.onAttach();
-       usernameTextBox.setFocus(true);
+       if (usernameTextBox.getValue().trim().isEmpty()) {
+           usernameTextBox.setFocus(true);
+       } else {
+           passwordTextBox.setFocus(true);
+       }
     }
 
 }
