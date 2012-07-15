@@ -85,6 +85,7 @@ public class AppPresenter extends WidgetContainerPresenter<AppPresenter.Display>
     private MainPresenter mainPresenter;
     private LoginPresenter loginPresenter;
     private ContactsPresenter contactsPresenter;
+    private boolean idleSupported = false; // currently IDLE is not implemented correctly
     
     @Inject
     public AppPresenter(Display display, DispatchAsync dispatcher, final EventBus bus, HupaConstants constants, LoginPresenter loginPresenter, MainPresenter mainPresenter, ContactsPresenter contactsPresenter) {
@@ -225,19 +226,23 @@ public class AppPresenter extends WidgetContainerPresenter<AppPresenter.Display>
         boolean running = false;
         public void run() {
             if (!running) {
-                running = true;
-                dispatcher.execute(new Idle(), new HupaCallback<IdleResult>(dispatcher, eventBus) {
-                    public void callback(IdleResult result) {
-                        running = false;
-                        // check if the server is not supporting the Idle command.
-                        // if so cancel this Timer
-                        if (result.isSupported() == false) {
-                            IdleTimer.this.cancel();
+                if (idleSupported) {
+                    running = true;
+                    dispatcher.execute(new Idle(), new HupaCallback<IdleResult>(dispatcher, eventBus) {
+                        public void callback(IdleResult result) {
+                            running = false;
+                            // check if the server is not supporting the Idle command.
+                            // if so cancel this Timer
+                            if (result.isSupported() == false) {
+                                idleSupported = false;
+                            }
+                            // Noop
+                            // TODO: put code here to read new events from server (new messages ...)
                         }
-                        // Noop
-                        // TODO: put code here to read new events from server (new messages ...)
-                    }
-                });
+                    });
+                } else {
+                    mainPresenter.reloadMessages();
+                }
             }
         }
     }

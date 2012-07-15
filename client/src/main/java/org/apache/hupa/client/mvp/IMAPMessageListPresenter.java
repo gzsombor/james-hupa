@@ -428,5 +428,13 @@ public class IMAPMessageListPresenter extends WidgetPresenter<IMAPMessageListPre
 
         revealDisplay();
     }
+    
+    /**
+     * Reload the current page.
+     */
+    public void reloadData() {
+        display.reset();
+        display.reloadData();
+    }
 
 }

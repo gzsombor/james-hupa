@@ -30,6 +30,8 @@ import net.customware.gwt.presenter.client.widget.WidgetContainerDisplay;
 import net.customware.gwt.presenter.client.widget.WidgetContainerPresenter;
 
 import org.apache.hupa.client.HupaCallback;
+import org.apache.hupa.client.HupaConstants;
+import org.apache.hupa.client.HupaMessages;
 import org.apache.hupa.client.mvp.MessageSendPresenter.Type;
 import org.apache.hupa.client.widgets.HasDialog;
 import org.apache.hupa.client.widgets.IMAPTreeItem;
@@ -76,6 +78,7 @@ import org.apache.hupa.widgets.ui.HasEditable;
 import org.apache.hupa.widgets.ui.HasEnable;
 
 import com.google.gwt.core.client.GWT;
+import com.google.gwt.dom.client.Document;
 import com.google.gwt.event.dom.client.ClickEvent;
 import com.google.gwt.event.dom.client.ClickHandler;
 import com.google.gwt.event.dom.client.HasClickHandlers;
@@ -132,22 +135,24 @@ public class MainPresenter extends WidgetContainerPresenter<MainPresenter.Displa
     private DispatchAsync dispatcher;
     private User user;
     private IMAPFolder folder;
+    private IMAPFolder visibleFolder;
     private String searchValue;
     private IMAPMessageListPresenter messageListPresenter;
     private IMAPMessagePresenter messagePresenter;
     private MessageSendPresenter sendPresenter;
     private IMAPTreeItem tItem;
     private HasEditable editableTreeItem;
+    private HupaMessages messages; 
     
     @Inject
     public MainPresenter(MainPresenter.Display display, EventBus bus, DispatchAsync cachingDispatcher, IMAPMessageListPresenter messageListPresenter, IMAPMessagePresenter messagePresenter,
-            MessageSendPresenter sendPresenter) {
+            MessageSendPresenter sendPresenter, HupaMessages messages) {
         super(display, bus, messageListPresenter, messagePresenter, sendPresenter);
         this.dispatcher = cachingDispatcher;
         this.messageListPresenter = messageListPresenter;
         this.messagePresenter = messagePresenter;
         this.sendPresenter = sendPresenter;
-        
+        this.messages = messages;
     }
 
     protected void loadTreeItems() {
@@ -206,7 +211,7 @@ public class MainPresenter extends WidgetContainerPresenter<MainPresenter.Displa
 
             // Store the INBOX as starting point after first loading
             if (iFolder.getFullName().equals(user.getSettings().getInboxFolderName())) {
-                folder = iFolder;
+                setFolder(iFolder);
                 tItem = record;
             }
 
@@ -226,7 +231,7 @@ public class MainPresenter extends WidgetContainerPresenter<MainPresenter.Displa
 
     private void showMessageTable(User user, IMAPFolder folder, String searchValue) {
         this.user = user;
-        this.folder = folder;
+        setFolder(folder);
         this.searchValue = searchValue;
         firePresenterChangedEvent();
 
@@ -381,17 +386,6 @@ public class MainPresenter extends WidgetContainerPresenter<MainPresenter.Displa
                     return;
                 folder = (IMAPFolder) tItem.getUserObject();
                 eventBus.fireEvent(new LoadMessagesEvent(user, folder));
-            }
-
-        }));
-
-        registerHandler(display.getTree().addSelectionHandler(new SelectionHandler<TreeItem>() {
-
-            public void onSelection(SelectionEvent<TreeItem> event) {
-                tItem = (IMAPTreeItem) event.getSelectedItem();
-                if (tItem.isEdit()) 
-                    return;
-                folder = (IMAPFolder) tItem.getUserObject();
                 if (folder.getFullName().equalsIgnoreCase(user.getSettings().getInboxFolderName())) {
                     display.getDeleteEnable().setEnabled(false);
                     display.getRenameEnable().setEnabled(false);
@@ -400,7 +394,6 @@ public class MainPresenter extends WidgetContainerPresenter<MainPresenter.Displa
                     display.getRenameEnable().setEnabled(true);
                 }
             }
-
         }));
 
         registerHandler(display.getRenameClick().addClickHandler(new ClickHandler() {
@@ -470,6 +463,7 @@ public class MainPresenter extends WidgetContainerPresenter<MainPresenter.Displa
 
             public void onMessagesReceived(MessagesReceivedEvent event) {
                 IMAPFolder f = event.getFolder();
+                setFolder(f);
                 display.updateTreeItem(f);
             }
 
@@ -479,7 +473,7 @@ public class MainPresenter extends WidgetContainerPresenter<MainPresenter.Displa
 
             public void onLogin(LoginEvent event) {
                 user = event.getUser();
-                folder = new IMAPFolder(user.getSettings().getInboxFolderName());;
+                setFolder(new IMAPFolder(user.getSettings().getInboxFolderName()));
                 searchValue = null;
                 showMessageTable(user, folder, searchValue);
             }
@@ -491,6 +485,20 @@ public class MainPresenter extends WidgetContainerPresenter<MainPresenter.Displa
 
     }
 
+    void setFolder(IMAPFolder f) {
+        this.folder = f;
+        this.visibleFolder = f;
+        if (f.getUnseeMessageCount() > 0) {
+            Document.get().setTitle(messages.titleForFolderWithUnreadMessages(f.getName(), f.getUnseeMessageCount(), user.getName()));
+        } else {
+            Document.get().setTitle(messages.titleForFolder(f.getName(), user.getName()));
+        }
+    }
+    
+    public void reloadMessages() {
+        messageListPresenter.reloadData();
+    }
+    
     public void revealDisplay(User user) {
         this.user = user;
         loadTreeItems();  
@@ -510,6 +518,7 @@ public class MainPresenter extends WidgetContainerPresenter<MainPresenter.Displa
     public void mailTo(String mailto) {
         sendPresenter.revealDisplay(user, mailto);
     }
+    
     
     private native void exportJSMethods(MainPresenter presenter) /*-{
       $wnd.openLink = function(url) {

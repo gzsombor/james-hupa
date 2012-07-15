@@ -37,4 +37,10 @@ public interface HupaMessages extends Messages, StandardValidationMessagesImpl {
     @DefaultMessage("Are you sure you want to delete the selected folder ?")
     public String confirmDeleteFolder();
     
+    @DefaultMessage("{0} - {1} - Hupa webmail")    
+    public String titleForFolder(String folderName, String accountName);
+    
+    @DefaultMessage("{0}({1}) - {2} - Hupa webmail")    
+    public String titleForFolderWithUnreadMessages(String folderName, int unread, String accountName);
+    
 }
