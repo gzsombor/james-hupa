@@ -142,7 +142,8 @@ public class MainPresenter extends WidgetContainerPresenter<MainPresenter.Displa
     private MessageSendPresenter sendPresenter;
     private IMAPTreeItem tItem;
     private HasEditable editableTreeItem;
-    private HupaMessages messages; 
+    private HupaMessages messages;
+    private boolean treeLoading = false;
     
     @Inject
     public MainPresenter(MainPresenter.Display display, EventBus bus, DispatchAsync cachingDispatcher, IMAPMessageListPresenter messageListPresenter, IMAPMessagePresenter messagePresenter,
@@ -156,17 +157,32 @@ public class MainPresenter extends WidgetContainerPresenter<MainPresenter.Displa
     }
 
     protected void loadTreeItems() {
-        display.setLoadingFolders(true);
-        dispatcher.execute(new FetchFolders(), new HupaCallback<FetchFoldersResult>(dispatcher, eventBus, display) {
-            public void callback(FetchFoldersResult result) {
-                display.bindTreeItems(createTreeNodes(result.getFolders()));
-                // disable
-                display.getDeleteEnable().setEnabled(false);
-                display.getRenameEnable().setEnabled(false);
-                display.setLoadingFolders(false);
-
-            }
-        });
+        if (!treeLoading) {
+            treeLoading = true;
+            display.setLoadingFolders(true);
+            dispatcher.execute(new FetchFolders(), new HupaCallback<FetchFoldersResult>(dispatcher, eventBus, display) {
+                public void callback(FetchFoldersResult result) {
+                    treeLoading = false;
+                    display.bindTreeItems(createTreeNodes(result.getFolders()));
+                    // disable
+                    display.getDeleteEnable().setEnabled(false);
+                    display.getRenameEnable().setEnabled(false);
+                    display.setLoadingFolders(false);
+    
+                }
+                @Override
+                public void onFailure(Throwable originalCaught) {
+                    treeLoading = false;
+                    display.setLoadingFolders(false);
+                    super.onFailure(originalCaught);
+                    
+                    // re-try ?
+                    loadTreeItems();
+                }
+            });
+        } else {
+            
+        }
     }
 
     /**
