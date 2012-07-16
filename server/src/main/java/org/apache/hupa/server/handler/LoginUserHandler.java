@@ -19,8 +19,7 @@
 
 package org.apache.hupa.server.handler;
 
-import com.google.inject.Inject;
-import com.google.inject.Provider;
+import javax.servlet.http.HttpSession;
 
 import net.customware.gwt.dispatch.server.ActionHandler;
 import net.customware.gwt.dispatch.server.ExecutionContext;
@@ -35,8 +34,9 @@ import org.apache.hupa.shared.data.User;
 import org.apache.hupa.shared.rpc.LoginUser;
 import org.apache.hupa.shared.rpc.LoginUserResult;
 
-
-import javax.servlet.http.HttpSession;
+import com.google.inject.Inject;
+import com.google.inject.Provider;
+import com.sun.mail.imap.IMAPStore;
 
 /**
  * Handler for login a user via username and password
@@ -76,11 +76,11 @@ public class LoginUserHandler implements
             user.setPassword(password);
             
             // login
-            cache.get(user);
+            IMAPStore store = cache.get(user);
             
             user.setAuthenticated(true);
             user.setSettings(settingsProvider.get());
-            
+            user.setGmExtensions(store.hasCapability("X-GM-EXT-1"));
             // store the session id for later usage
             session.setAttribute(SConsts.USER_SESS_ATTR, user);
             

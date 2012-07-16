@@ -119,4 +119,6 @@ public interface HupaConstants extends Constants, UploaderConstants, PagingOptio
     
     public String footer();
     
+    public String archive();
+    
 }

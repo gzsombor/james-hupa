@@ -109,6 +109,7 @@ public class IMAPMessageListView extends Composite implements Display{
     private ConfirmDialogBox confirmDeleteAllBox = new ConfirmDialogBox();
     private EnableButton markSeenButton;
     private EnableButton markUnSeenButton;
+    private Button archiveButton;
 
     private ListBox pageBox = new ListBox();
     private Hyperlink allLink;    
@@ -129,6 +130,8 @@ public class IMAPMessageListView extends Composite implements Display{
         deleteAllMailButton = new Button(constants.deleteAll());
         markSeenButton = new EnableButton(constants.markSeen());
         markUnSeenButton = new EnableButton(constants.markUnseen());
+        archiveButton = new Button(constants.archive());
+        //archiveButton.setVisible(false);
         allLink = new Hyperlink(constants.all(),"");    
         noneLink = new Hyperlink(constants.none(),"");
         refreshLink = new Hyperlink(constants.refresh(),"");
@@ -190,6 +193,7 @@ public class IMAPMessageListView extends Composite implements Display{
         markButtonBar.add(markSeenButton);
         markButtonBar.add(markUnSeenButton);
         buttonBar.add(markButtonBar);
+        buttonBar.add(archiveButton);
         buttonBar.add(refreshLink);
         pageBox.addItem("" + DEFAULT_MSG_PAGE_SIZE);
         pageBox.addItem("" + (DEFAULT_MSG_PAGE_SIZE * 2));
@@ -379,6 +383,10 @@ public class IMAPMessageListView extends Composite implements Display{
     
    
 
+    @Override
+    public void setArchiveEnable(boolean visible) {
+        this.archiveButton.setEnabled(visible);
+    }
     
     /**
      * ColumnDefination which display if the message contains an attachment

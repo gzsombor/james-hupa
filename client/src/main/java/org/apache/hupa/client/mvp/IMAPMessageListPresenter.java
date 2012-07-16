@@ -114,6 +114,7 @@ public class IMAPMessageListPresenter extends WidgetPresenter<IMAPMessageListPre
         public HasValue<String> getSearchValue();
         public void fillSearchOracle(ArrayList<Message> messages);
         public void setExpandLoading(boolean expanding);
+        public void setArchiveEnable(boolean visible);
 
     }
 
@@ -318,10 +319,12 @@ public class IMAPMessageListPresenter extends WidgetPresenter<IMAPMessageListPre
                         display.getDeleteEnable().setEnabled(false);
                         display.getMarkSeenEnable().setEnabled(false);
                         display.getMarkUnseenEnable().setEnabled(false);
+                        display.setArchiveEnable(false);
                     } else {
                         display.getDeleteEnable().setEnabled(true);
                         display.getMarkSeenEnable().setEnabled(true);
                         display.getMarkUnseenEnable().setEnabled(true);
+                        display.setArchiveEnable(user.getSettings().isInboxFolderName(folder.getFullName()));
                     }
                 }
                 

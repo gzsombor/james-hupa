@@ -76,15 +76,15 @@ public class CachingDispatchAsync extends StandardDispatchAsync {
             final A action, final AsyncCallback<R> callback) {
 
         final Class<?> clz = action.getClass();
-        if (running.contains(clz)) {
+        /*if (running.contains(clz)) {
             System.err.println("ATTENTION: avoiding a parallel execution of the action: " + action.getClass().getName());
             new RuntimeException().printStackTrace();
             
             return;
-        } else {
-            running.add(clz);
+        } else {*/
+            // running.add(clz);
             if (action instanceof FetchMessages) {
-                new RuntimeException().printStackTrace();
+                //new RuntimeException().printStackTrace();
             }
             super.execute(action, new AsyncCallback<R>() {
                 public void onFailure(Throwable caught) {
@@ -96,7 +96,7 @@ public class CachingDispatchAsync extends StandardDispatchAsync {
                     callback.onSuccess(result);
                 }
             });
-         }
+         //}
     }
 
     /**
@@ -107,6 +107,7 @@ public class CachingDispatchAsync extends StandardDispatchAsync {
             final A action, final AsyncCallback<R> callback) {
         Result r = cache.get(action);
 
+        /*
         final Class<?> clz = action.getClass();
         if (running.contains(clz)) {
             System.out.println("Contanins " + clz);
@@ -115,18 +116,18 @@ public class CachingDispatchAsync extends StandardDispatchAsync {
             System.out.println("new " + clz);
             running.add(clz);
         }
-        
+        */
         if (r != null) {
             callback.onSuccess((R) r);
         } else {
             super.execute(action, new AsyncCallback<R>() {
                 public void onFailure(Throwable caught) {
-                    running.remove(clz);
+                    //running.remove(clz);
                     callback.onFailure(caught);
                 }
 
                 public void onSuccess(R result) {
-                    running.remove(clz);
+                    //running.remove(clz);
                     cache.put((Action<Result>) action, (Result) result);
                     callback.onSuccess(result);
                 }

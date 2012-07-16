@@ -226,7 +226,7 @@ public class MainPresenter extends WidgetContainerPresenter<MainPresenter.Displa
             }
 
             // Store the INBOX as starting point after first loading
-            if (iFolder.getFullName().equals(user.getSettings().getInboxFolderName())) {
+            if (user.getSettings().isInboxFolderName(iFolder.getFullName())) {
                 setFolder(iFolder);
                 tItem = record;
             }

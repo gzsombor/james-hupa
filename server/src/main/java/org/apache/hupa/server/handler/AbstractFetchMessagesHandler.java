@@ -45,6 +45,7 @@ import org.apache.hupa.shared.data.Tag;
 import org.apache.hupa.shared.data.User;
 import org.apache.hupa.shared.rpc.FetchMessages;
 import org.apache.hupa.shared.rpc.FetchMessagesResult;
+import org.apache.james.gmail.GMailFetchItem;
 
 import com.google.inject.Provider;
 import com.sun.mail.imap.IMAPStore;
@@ -86,7 +87,7 @@ public abstract class AbstractFetchMessagesHandler <A extends FetchMessages> ext
             }        
             
             MessageConvertArray convArray = getMessagesToConvert(f,action);
-            return new FetchMessagesResult(convert(offset, f, convArray.getMesssages()),start, offset,convArray.getRealCount(),f.getUnreadMessageCount());
+            return new FetchMessagesResult(convert(offset, f, convArray.getMesssages(), user),start, offset,convArray.getRealCount(),f.getUnreadMessageCount());
         } catch (MessagingException e) {
             logger.info("Error fetching messages in folder: " + folder.getFullName() + " " + e.getMessage());
             // Folder can not contain messages
@@ -110,7 +111,7 @@ public abstract class AbstractFetchMessagesHandler <A extends FetchMessages> ext
     
     protected abstract MessageConvertArray getMessagesToConvert(com.sun.mail.imap.IMAPFolder f, A action) throws MessagingException, ActionException;
     
-    protected ArrayList<org.apache.hupa.shared.data.Message> convert(int offset, com.sun.mail.imap.IMAPFolder folder, Message[] messages) throws MessagingException {
+    protected ArrayList<org.apache.hupa.shared.data.Message> convert(int offset, com.sun.mail.imap.IMAPFolder folder, Message[] messages, User user) throws MessagingException {
         ArrayList<org.apache.hupa.shared.data.Message> mList = new ArrayList<org.apache.hupa.shared.data.Message>();
         // Setup fetchprofile to limit the stuff which is fetched 
         FetchProfile fp = new FetchProfile();
@@ -118,6 +119,11 @@ public abstract class AbstractFetchMessagesHandler <A extends FetchMessages> ext
         fp.add(FetchProfile.Item.FLAGS);
         fp.add(FetchProfile.Item.CONTENT_INFO);
         fp.add(UIDFolder.FetchProfileItem.UID);
+        if (user.isGmExtensions()) {
+            fp.add(GMailFetchItem.MESSAGE_ID);
+            fp.add(GMailFetchItem.LABELS);
+            fp.add(GMailFetchItem.THREAD_ID);
+        }
         folder.fetch(messages, fp);
         
         // loop over the fetched messages

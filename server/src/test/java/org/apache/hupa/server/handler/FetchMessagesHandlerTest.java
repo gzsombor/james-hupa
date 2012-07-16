@@ -19,20 +19,21 @@
 
 package org.apache.hupa.server.handler;
 
-import org.apache.hupa.server.HupaGuiceTestCase;
-import org.apache.hupa.server.mock.MockIMAPFolder;
-import org.apache.hupa.shared.data.IMAPFolder;
-import org.apache.hupa.shared.rpc.FetchMessages;
-import org.apache.hupa.shared.rpc.FetchMessagesResult;
-
 import java.io.ByteArrayInputStream;
 import java.util.ArrayList;
 
 import javax.mail.Flags;
+import javax.mail.Flags.Flag;
 import javax.mail.Folder;
 import javax.mail.Message;
-import javax.mail.Flags.Flag;
 import javax.mail.internet.MimeMessage;
+
+import org.apache.hupa.server.HupaGuiceTestCase;
+import org.apache.hupa.server.mock.MockIMAPFolder;
+import org.apache.hupa.shared.data.IMAPFolder;
+import org.apache.hupa.shared.data.User;
+import org.apache.hupa.shared.rpc.FetchMessages;
+import org.apache.hupa.shared.rpc.FetchMessagesResult;
 
 public class FetchMessagesHandlerTest extends HupaGuiceTestCase {
 
@@ -47,19 +48,20 @@ public class FetchMessagesHandlerTest extends HupaGuiceTestCase {
         is = new ByteArrayInputStream("From: a@foo.com\nTo: \"<b@foo.com>\" <b@foo.com>\nSubject: =?ISO-8859-1?Q?Monta=F1a?=\n\ndata".getBytes());
         MimeMessage m3 = new MimeMessage(session, is);
         
-        ArrayList<org.apache.hupa.shared.data.Message> msgs = fetchMessagesHandler.convert(2, f, new Message[]{m1, m2, m3});
+        User u = new User();
+        ArrayList<org.apache.hupa.shared.data.Message> msgs = fetchMessagesHandler.convert(2, f, new Message[]{m1, m2, m3}, u);
         assertEquals(2, msgs.size());
         
-        msgs = fetchMessagesHandler.convert(10, f, new Message[]{m1, m2, m3});
+        msgs = fetchMessagesHandler.convert(10, f, new Message[]{m1, m2, m3}, u);
         assertEquals(3, msgs.size());
         
-        msgs = fetchMessagesHandler.convert(10, f, new Message[]{m1});
+        msgs = fetchMessagesHandler.convert(10, f, new Message[]{m1}, u);
         assertEquals("a b c <aa@foo.com>",  msgs.get(0).getFrom());
 
-        msgs = fetchMessagesHandler.convert(10, f, new Message[]{m2});
+        msgs = fetchMessagesHandler.convert(10, f, new Message[]{m2}, u);
         assertEquals("Manolo Pe\u00F1a <penya@foo.com>",  msgs.get(0).getFrom());
         
-        msgs = fetchMessagesHandler.convert(10, f, new Message[]{m3});
+        msgs = fetchMessagesHandler.convert(10, f, new Message[]{m3}, u);
         assertEquals("Monta\u00F1a",  msgs.get(0).getSubject());
         assertEquals("b@foo.com <b@foo.com>",  msgs.get(0).getTo().get(0));
 

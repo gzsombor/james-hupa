@@ -47,6 +47,10 @@ public class Settings implements Serializable{
         this.inboxFolderName = inboxFolderName;
     }
     
+    public boolean isInboxFolderName(String folderName) {
+        return inboxFolderName.equals(folderName);
+    }
+    
     public String getTrashFolderName() {
         return trashFolderName;
     }

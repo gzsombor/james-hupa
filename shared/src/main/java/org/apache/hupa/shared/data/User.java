@@ -35,6 +35,7 @@ public class User implements Serializable{
     private Date loginDate;
     private boolean auth;
     private Settings settings;
+    private boolean gmExtensions;
     
     
     /**
@@ -79,6 +80,15 @@ public class User implements Serializable{
      */
     public String toString() {
         return getName();
+    }
+    
+    
+    public void setGmExtensions(boolean gmExtensions) {
+        this.gmExtensions = gmExtensions;
+    }
+    
+    public boolean isGmExtensions() {
+        return gmExtensions;
     }
     
     /*

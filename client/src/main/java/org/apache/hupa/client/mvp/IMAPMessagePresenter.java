@@ -55,6 +55,7 @@ public class IMAPMessagePresenter extends WidgetPresenter<IMAPMessagePresenter.D
         public void setHeaders(Message msg);
         public void setAttachments(List<MessageAttachment> attachements, String folder,  long uid);
         public void setContent(String content);
+        public void setEnableArchiveButton(boolean flag);
         
         public HasClickHandlers getShowRawMessageClick();
         public HasClickHandlers getDeleteButtonClick();
@@ -62,6 +63,7 @@ public class IMAPMessagePresenter extends WidgetPresenter<IMAPMessagePresenter.D
         public HasClickHandlers getReplyAllButtonClick();
         public HasClickHandlers getForwardButtonClick();
         public HasClickHandlers getBackButtonClick();
+        public HasClickHandlers getArchiveButtonClick();
     }
 
     private MessageDetails messageDetails;
@@ -91,6 +93,8 @@ public class IMAPMessagePresenter extends WidgetPresenter<IMAPMessagePresenter.D
         display.setAttachments(messageDetails.getMessageAttachments(), folder.getFullName(),message.getUid());
         display.setHeaders(message);
         display.setContent(messageDetails.getText());
+        boolean inboxFolder = user.getSettings().isInboxFolderName(folder.getFullName());
+        display.setEnableArchiveButton(inboxFolder);
     }
 
     @Override

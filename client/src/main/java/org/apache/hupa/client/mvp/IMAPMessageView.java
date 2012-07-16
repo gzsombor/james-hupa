@@ -77,6 +77,7 @@ public class IMAPMessageView extends Composite implements Display{
     private Button replyMsgButton = new Button();
     private Button replyAllMsgButton = new Button();
     private Button forwardMsgButton = new Button();
+    private Button archiveMsgButton = new Button();
     private Hyperlink showRawButton;
     private Hyperlink backButton;
     private FlowPanel attachments = new FlowPanel();
@@ -94,7 +95,9 @@ public class IMAPMessageView extends Composite implements Display{
         deleteMsgButton.setText(constants.deleteMailButton());
         replyMsgButton.setText(constants.replyMailButton());
         replyAllMsgButton.setText(constants.replyAllMailButton());
-        forwardMsgButton.setText(constants.forwardMailButton());    
+        forwardMsgButton.setText(constants.forwardMailButton());  
+        archiveMsgButton.setText(constants.archive());
+        archiveMsgButton.setEnabled(false);
         
         messageContainer.addStyleName(HupaCSS.C_msgview_container);
         
@@ -103,6 +106,7 @@ public class IMAPMessageView extends Composite implements Display{
         buttonsBar.add(deleteMsgButton);
         buttonsBar.add(forwardMsgButton);
         buttonsBar.add(loading);
+        buttonsBar.add(archiveMsgButton);
         buttonsBar.add(showRawButton);
         buttonsBar.add(backButton);
         
@@ -195,6 +199,15 @@ public class IMAPMessageView extends Composite implements Display{
 
     public HasClickHandlers getShowRawMessageClick() {
         return showRawButton;
+    }
+    
+    public HasClickHandlers getArchiveButtonClick() {
+        return archiveMsgButton;
+    }
+    
+    @Override
+    public void setEnableArchiveButton(boolean flag) {
+        archiveMsgButton.setEnabled(flag);        
     }
 
     public void setHeaders(Message message) {
