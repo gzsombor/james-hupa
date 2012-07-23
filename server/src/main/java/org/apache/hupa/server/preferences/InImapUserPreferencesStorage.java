@@ -26,8 +26,10 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.Hashtable;
+import java.util.List;
+import java.util.Map;
 
 import javax.mail.BodyPart;
 import javax.mail.Flags.Flag;
@@ -77,7 +79,10 @@ public class InImapUserPreferencesStorage extends UserPreferencesStorage {
     // TODO: centralize this constant
     protected static final String USER_ATTR = "user";
     
-    private static Hashtable<User, Thread> threads = new Hashtable<User, Thread>();
+    
+    private static Map<User, SaveTask> toSave = new HashMap<User, SaveTask>();
+    
+    private static Thread background = null;
     
     /**
      * Opens the IMAP folder and read messages until it founds the magic subject,
@@ -210,7 +215,7 @@ public class InImapUserPreferencesStorage extends UserPreferencesStorage {
         for (Contact contact : contacts) {
             if (!contactsHash.containsKey(contact.toKey())) {
                 contactsHash.put(contact.toKey(), contact);
-                saveContactsAsync((User) sessionProvider.get().getAttribute(USER_ATTR));
+                saveContactsAsync((User) sessionProvider.get().getAttribute(USER_ATTR), contactsHash);
             }
         }
     }
@@ -237,11 +242,12 @@ public class InImapUserPreferencesStorage extends UserPreferencesStorage {
                 User user = (User) sessionProvider.get().getAttribute("user");
                 IMAPStore iStore = cache.get(user);
                 Object o = readUserPreferencesFromIMAP(logger, user, iStore, user.getSettings().getDraftsFolderName(), MAGIC_SUBJECT_CONTACTS);
-                contactHash = o != null ? (HashMap<String, Contact>) o : new HashMap<String, Contact>();
-                session.setAttribute(CONTACTS_ATTR, contactHash);
+                contactHash = o instanceof HashMap ? (HashMap<String, Contact>) o : new HashMap<String, Contact>();
             } catch (Exception e) {
                 e.printStackTrace();
+                contactHash = new HashMap<String, Contact>();
             }
+            session.setAttribute(CONTACTS_ATTR, contactHash);
         }
         return contactHash;
     }
@@ -254,38 +260,64 @@ public class InImapUserPreferencesStorage extends UserPreferencesStorage {
      *  added to the session list, and a thread is delayed to store
      *  all the block. 
      */
-    private void saveContactsAsync(User user) {
-        Thread thread = threads.get(user);
-        if (thread == null || !thread.isAlive()) {
-            thread = new SavePreferencesThread(user, MAGIC_SUBJECT_CONTACTS, getContactsHash());
-            threads.put(user, thread);
-            thread.start();
+    private void saveContactsAsync(User user, Map<String, Contact> contacts) {
+        synchronized(toSave) {
+            toSave.put(user, new SaveTask(user, contacts));
+        }
+        checkThread();
+    }
+    
+    private synchronized static void checkThread() {
+        if (background == null) {
+            background = new Thread(new BackgroundSave(), "background-contact-saver");
+            background.setDaemon(true);
+            background.start();
         }
     }
 
-    /**
-     * The thread class which saves asynchronously the user preferences 
-     */
-    private class SavePreferencesThread extends Thread {
-        private String folderName = null;
-        private Object object = null;
-        private String subject = null;
-        private User user = null;
-        
-        public SavePreferencesThread(User user, String subject, Object object) {
-            this.user = user;
-            this.folderName = user.getSettings().getDraftsFolderName();
-            this.subject = subject;
-            this.object = object;
-        }
-        
-        public void run(){
-            try {
-                sleep(IMAP_SAVE_DELAY);
-                saveUserPreferencesInIMAP(logger, user, session, cache.get(user), folderName, subject, object);
-            } catch (Exception e) {
-                logger.error("Error saving user's preferences: ", e);
+    private static class BackgroundSave implements Runnable {
+
+        @Override
+        public void run() {
+            while(true) {
+                try {
+                    Thread.sleep(IMAP_SAVE_DELAY);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+                List<SaveTask> todos = null;
+                synchronized(toSave) {
+                    todos = new ArrayList<SaveTask>(toSave.values());
+                    toSave.clear();
+                }
+                
+                for (SaveTask st: todos) {
+                    st.run();
+                }
             }
         }
+        
     }
+    
+    private class SaveTask implements Runnable {
+        User user;
+        Map<String, Contact> contacts;
+        
+        SaveTask(User user, Map<String, Contact> contacts) {
+            this.user = user;
+            this.contacts = contacts;
+        }
+
+        @Override
+        public void run() {
+            String folderName = user.getSettings().getDraftsFolderName();
+            try {
+                saveUserPreferencesInIMAP(logger, user, session, cache.get(user), folderName, MAGIC_SUBJECT_CONTACTS, contacts);
+            } catch (Exception e) {
+                logger.error("saving preferece for " + user.getName()+ " error:"+e.getMessage(), e);
+            }
+        }
+        
+    }
+    
 }
