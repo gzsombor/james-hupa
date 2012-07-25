@@ -30,13 +30,12 @@ import net.customware.gwt.dispatch.shared.ActionException;
 
 import org.apache.commons.logging.Log;
 import org.apache.hupa.server.IMAPStoreCache;
-import org.apache.hupa.shared.data.IMAPFolder;
 import org.apache.hupa.shared.data.User;
 import org.apache.hupa.shared.rpc.DeleteMessageByUid;
 
 import com.google.inject.Inject;
 import com.google.inject.Provider;
-import com.sun.mail.imap.IMAPStore;
+import com.sun.mail.imap.IMAPFolder;
 
 /**
  * Handler which take care of deleting messages
@@ -61,22 +60,14 @@ public class DeleteMessageByUidHandler extends
     }
 
     @Override
-    protected Message[] getMessagesToDelete(DeleteMessageByUid action)
+    protected Message[] getMessagesToDelete(DeleteMessageByUid action, IMAPFolder f) 
             throws ActionException {
-        IMAPFolder folder = action.getFolder();
         ArrayList<Long> uids = action.getMessageUids();
         User user = getUser();
 
         logger.info("Deleting messages with uids " + action.getMessageUids()
                 + " for user " + user + " in folder " + action.getFolder());
         try {
-            IMAPStore store = cache.get(user);
-            com.sun.mail.imap.IMAPFolder f = (com.sun.mail.imap.IMAPFolder) store
-                    .getFolder(folder.getFullName());
-            // check if the folder is open, if not open it "rw"
-            if (f.isOpen() == false) {
-                f.open(com.sun.mail.imap.IMAPFolder.READ_WRITE);
-            }
             // build up the list of messages to delete
             List<Message> messages = new ArrayList<Message>();
             for (Long uid : uids) {

@@ -35,6 +35,7 @@ import org.apache.hupa.shared.rpc.DeleteMessageResult;
 
 import com.google.inject.Inject;
 import com.google.inject.Provider;
+import com.sun.mail.imap.IMAPFolder;
 import com.sun.mail.imap.IMAPStore;
 
 /**
@@ -68,7 +69,7 @@ public abstract class AbstractDeleteMessageHandler<Action extends DeleteMessage>
                 f.open(com.sun.mail.imap.IMAPFolder.READ_WRITE);
             }
 
-            Message[] mArray = getMessagesToDelete(action);
+            Message[] mArray = getMessagesToDelete(action, f);
             
             // check if the delete was triggered not in the trash folder
             if (folder.getFullName().equalsIgnoreCase(
@@ -89,6 +90,7 @@ public abstract class AbstractDeleteMessageHandler<Action extends DeleteMessage>
                 if (trashFound) {
                     // copy the messages to the trashfolder
                     f.copyMessages(mArray, trashFolder);
+                    //f.do
                 }
             }
 
@@ -116,8 +118,9 @@ public abstract class AbstractDeleteMessageHandler<Action extends DeleteMessage>
      * Return an array holding all messages which should get deleted by the given action
      * 
      * @param action
+     * @param folder
      * @return messages
      * @throws ActionException
      */
-    protected abstract Message[] getMessagesToDelete(Action action) throws ActionException;
+    protected abstract Message[] getMessagesToDelete(Action action, IMAPFolder folder) throws ActionException;
 }
