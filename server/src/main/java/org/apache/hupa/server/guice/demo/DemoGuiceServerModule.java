@@ -80,13 +80,14 @@ public class DemoGuiceServerModule extends GuiceServerModule {
             try {
                 Class<?> clz = 
                     Class.forName("org.apache.hupa.server.mock.MockIMAPStore");
-                Constructor<?> cons = clz.getConstructors()[0];
+                Constructor<?> cons = clz.getConstructor(Session.class);
                 IMAPStore store = (IMAPStore) cons
                         .newInstance(new Object[] { session });
                 return new CachedIMAPStore(store, 300);
             } catch (Exception e) {
+            	e.printStackTrace();
+            	throw new NoSuchProviderException("error:"+e.getMessage());
             }
-            return super.createCachedIMAPStore();
         }
 
         @Override
@@ -95,11 +96,12 @@ public class DemoGuiceServerModule extends GuiceServerModule {
             try {
                 Class<?> clz = 
                     Class.forName("org.apache.hupa.server.mock.MockSMTPTransport");
-                Constructor<?> cons = clz.getConstructors()[0];
+                Constructor<?> cons = clz.getConstructor(Session.class);
                 return (Transport) cons.newInstance(new Object[] { session });
             } catch (Exception e) {
+            	e.printStackTrace();
+            	throw new NoSuchProviderException("error:"+e.getMessage());
             }
-            return super.getMailTransport(useSSL);
         }
     }
 
