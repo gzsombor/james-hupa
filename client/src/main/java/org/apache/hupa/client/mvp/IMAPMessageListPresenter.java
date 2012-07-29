@@ -258,13 +258,15 @@ public class IMAPMessageListPresenter extends WidgetPresenter<IMAPMessageListPre
                 }
                 dispatcher.execute(new SetFlag(folder, IMAPFlag.SEEN, true, uids), new HupaCallback<GenericResult>(dispatcher, eventBus) {
                     public void callback(GenericResult result) {
+                        int count = 0;
                         for (Message m : selectedMessages) {
                             if (m.getFlags().contains(IMAPFlag.SEEN) == false) {
                                 m.getFlags().add(IMAPFlag.SEEN);
+                                count ++;
                             }
                         }
                         display.redraw();
-                        eventBus.fireEvent(new DecreaseUnseenEvent(user, folder,selectedMessages.size()));
+                        eventBus.fireEvent(new DecreaseUnseenEvent(user, folder, count));
                     }
                 });
             }
@@ -286,13 +288,15 @@ public class IMAPMessageListPresenter extends WidgetPresenter<IMAPMessageListPre
                 
                 dispatcher.execute(new SetFlag(folder, IMAPFlag.SEEN, false, uids), new HupaCallback<GenericResult>(dispatcher, eventBus) {
                     public void callback(GenericResult result) {
+                        int count = 0;
                         for (Message m : selectedMessages) {
                             if (m.getFlags().contains(IMAPFlag.SEEN)) {
                                 m.getFlags().remove(IMAPFlag.SEEN);
+                                count ++;
                             }
                         }
                         display.redraw();
-                        eventBus.fireEvent(new IncreaseUnseenEvent(user, folder,selectedMessages.size()));
+                        eventBus.fireEvent(new IncreaseUnseenEvent(user, folder, count));
                     }
                 });
             }
@@ -310,7 +314,7 @@ public class IMAPMessageListPresenter extends WidgetPresenter<IMAPMessageListPre
         }));
         registerHandler(new HandlerRegistrationAdapter(display.getDataTableSelection().addRowSelectionHandler(new RowSelectionHandler() {
                 public void onRowSelection(RowSelectionEvent event) {
-                    if (event.getSelectedRows().size() == 0) {
+                    if (display.getSelectedMessages().isEmpty()) {
                         display.getDeleteEnable().setEnabled(false);
                         display.getMarkSeenEnable().setEnabled(false);
                         display.getMarkUnseenEnable().setEnabled(false);
@@ -388,14 +392,14 @@ public class IMAPMessageListPresenter extends WidgetPresenter<IMAPMessageListPre
             Message message = display.getData(row);
             
             // mark the message as seen and redraw the table to reflect this
-            if (message.getFlags().contains(Message.IMAPFlag.SEEN) == false) {
+            /*if (message.getFlags().contains(Message.IMAPFlag.SEEN) == false) {
                 // add flag, fire event and redraw
                 message.getFlags().add(Message.IMAPFlag.SEEN);
                 eventBus.fireEvent(new DecreaseUnseenEvent(user,folder,1));
                 
                 display.redraw();
 
-            }
+            }*/
             
             eventBus.fireEvent(new ExpandMessageEvent(user,folder,message));
         }

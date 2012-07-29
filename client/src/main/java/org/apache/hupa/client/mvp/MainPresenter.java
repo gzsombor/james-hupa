@@ -292,19 +292,14 @@ public class MainPresenter extends WidgetContainerPresenter<MainPresenter.Displa
         registerHandler(eventBus.addHandler(ExpandMessageEvent.TYPE, new ExpandMessageEventHandler() {
 
             public void onExpandMessage(ExpandMessageEvent event) {
-                final boolean decreaseUnseen;
                 final Message message = event.getMessage();
-                // check if the message was already seen in the past
-                if (event.getMessage().getFlags().contains(IMAPFlag.SEEN) == false) {
-                    decreaseUnseen = true;
-                } else {
-                    decreaseUnseen = false;
-                }
 
                 display.setLoadingMessage(true);
                 dispatcher.execute(new GetMessageDetails(event.getFolder(), message.getUid()), new HupaCallback<GetMessageDetailsResult>(dispatcher, eventBus, display) {
                     public void callback(GetMessageDetailsResult result) {
-                        if (decreaseUnseen) {
+                        // check if the message was already seen in the past
+                        if (!message.getFlags().contains(IMAPFlag.SEEN)) {
+                            message.getFlags().add(IMAPFlag.SEEN);
                             eventBus.fireEvent(new DecreaseUnseenEvent(user, folder));
                         }
                         display.setLoadingMessage(false);
