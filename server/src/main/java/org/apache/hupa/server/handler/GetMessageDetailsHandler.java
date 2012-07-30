@@ -132,15 +132,15 @@ public class GetMessageDetailsHandler extends
         
         Object con = message.getContent();
 
-        StringBuffer sbPlain = new StringBuffer();
+        Content c = new Content(folderName, uid);
         ArrayList<MessageAttachment> attachmentList = new ArrayList<MessageAttachment>();
         
-        boolean isHTML = handleParts(message, con, sbPlain, attachmentList);
+        handleParts(message, con, c, attachmentList);
         
-        if (isHTML) {
-            mDetails.setText(filterHtmlDocument(sbPlain.toString(), folderName, uid));
+        if (c.isHtml()) {
+            mDetails.setText(filterHtmlDocument(c.getText(), folderName, uid));
         } else {
-            mDetails.setText(txtDocumentToHtml(sbPlain.toString(), folderName, uid));
+            mDetails.setText(txtDocumentToHtml(c.getText(), folderName, uid));
         }
 
         mDetails.setMessageAttachments(attachmentList);
@@ -153,6 +153,62 @@ public class GetMessageDetailsHandler extends
         
         return mDetails;
     }
+    
+    static class Content {
+    	StringBuilder plain = new StringBuilder();
+    	boolean html = false;
+    	String folderName;
+    	long uid;
+    	
+    	
+    	public Content(String folderName, long uid) {
+			this.folderName = folderName;
+			this.uid = uid;
+		}
+
+		public boolean isHtml() {
+			return html;
+		}
+    	
+    	boolean isEmpty() {
+    		return plain.length() == 0;
+    	}
+    	
+    	public void append(boolean isHtml, String fragment) {
+    		if (isHtml) {
+    			if (html) {
+    				// simple case
+    				plain.append(fragment);
+    			} else {
+    				if (!isEmpty()) {
+    					// convert the previous to html
+    					plain = new StringBuilder(txtDocumentToHtml(plain.toString(), folderName, uid)); 
+    				}
+    				html= true;
+    				plain.append(fragment);
+    			}
+    		} else {
+    			if (html) {
+    				// append non html to a html ...
+    				plain.append(txtDocumentToHtml(fragment, folderName, uid));
+    			} else {
+    				// append non-html to a non-html
+    				plain.append(fragment);
+    			}
+    		}
+    	}
+    	
+    	public String getText() {
+			return plain.toString();
+		}
+    	
+    	@Override
+    	public String toString() {
+    		return "Content["+html+':'+plain+']';
+    	}
+    	
+    }
+    
 
     /**
      * Handle the parts of the given message. The method will call itself recursively to handle all nested parts
@@ -165,7 +221,7 @@ public class GetMessageDetailsHandler extends
      * @throws IOException
      */
     protected boolean handleParts(MimeMessage message, Object con,
-            StringBuffer sbPlain,
+            Content cnt,
             ArrayList<MessageAttachment> attachmentList)
             throws UnsupportedEncodingException, MessagingException,
             IOException {
@@ -176,7 +232,7 @@ public class GetMessageDetailsHandler extends
             } else {
                 isHTML = false;
             }
-            sbPlain.append((String) con);
+            cnt.append(isHTML, (String) con);
 
         } else if (con instanceof Multipart) {
 
@@ -186,14 +242,14 @@ public class GetMessageDetailsHandler extends
             String text = null;
 
             if (multipartContentType.startsWith("multipart/alternative")) {
-                isHTML = handleMultiPartAlternative(mp, sbPlain);
+                isHTML = handleMultiPartAlternative(mp, cnt);
             } else {
                 for (int i = 0; i < mp.getCount(); i++) {
                     Part part = mp.getBodyPart(i);
 
                     String contentType = part.getContentType().toLowerCase();
                     
-                    Boolean bodyRead = sbPlain.length() > 0;
+                    boolean bodyRead = !cnt.isEmpty();
 
                     if (!bodyRead && contentType.startsWith("text/plain") ) {
                         isHTML = false;
@@ -204,7 +260,7 @@ public class GetMessageDetailsHandler extends
                     } else if (!bodyRead && contentType.startsWith("message/rfc822")) {
                         // Extract the message and pass it
                         MimeMessage msg = (MimeMessage) part.getDataHandler().getContent();
-                        isHTML =  handleParts(msg, msg.getContent(), sbPlain, attachmentList);
+                        isHTML =  handleParts(msg, msg.getContent(), cnt, attachmentList);
                     } else {
                         if (part.getFileName() != null) {
                             // Inline images are not added to the attachment list
@@ -217,20 +273,20 @@ public class GetMessageDetailsHandler extends
                                 attachmentList.add(attachment);
                             }
                         } else {
-                            isHTML = handleParts(message, part.getContent(), sbPlain, attachmentList);
+                            isHTML = handleParts(message, part.getContent(), cnt, attachmentList);
                         }
                     }
 
                 }
                 if (text != null)
-                    sbPlain.append(text);
+                    cnt.append(isHTML, text);
             }
 
         }
         return isHTML;
     }
     
-    private boolean handleMultiPartAlternative(Multipart mp, StringBuffer sbPlain) throws MessagingException, IOException {
+    private boolean handleMultiPartAlternative(Multipart mp, Content cnt) throws MessagingException, IOException {
         String text = null;
         boolean isHTML = false;
         for (int i = 0; i < mp.getCount(); i++) {
@@ -247,11 +303,11 @@ public class GetMessageDetailsHandler extends
                 text = (String) part.getContent();
             } 
         }
-        sbPlain.append(text);
+        cnt.append(isHTML, text);
         return isHTML;
     }
     
-    protected String txtDocumentToHtml(String txt, String folderName, long uuid) {
+    protected static String txtDocumentToHtml(String txt, String folderName, long uuid) {
         
         if (txt == null || txt.length()==0)
             return txt;
@@ -272,7 +328,7 @@ public class GetMessageDetailsHandler extends
         return txt;
     }
     
-    protected String filterHtmlDocument(String html, String folderName, long uuid) {
+    protected static String filterHtmlDocument(String html, String folderName, long uuid) {
         
         if (html == null || html.length()==0)
             return html;
