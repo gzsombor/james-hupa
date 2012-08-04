@@ -32,6 +32,7 @@ import java.util.List;
 import java.util.Map;
 
 import javax.mail.BodyPart;
+import javax.mail.Flags;
 import javax.mail.Flags.Flag;
 import javax.mail.Folder;
 import javax.mail.Message;
@@ -159,11 +160,15 @@ public class InImapUserPreferencesStorage extends UserPreferencesStorage {
             // It seems it's not possible to modify the content of an existing message using the API
             // So I delete the previous message storing the preferences and I create a new one
             Message[] msgs = folder.getMessages();
+            
+            List<Message> toBeDeleted = new ArrayList<Message>();
             for (Message msg : msgs) {
                 if (subject.equals(msg.getSubject())) {
-                    msg.setFlag(Flag.DELETED, true);
+                	msg.setFlag(Flag.DELETED, true);
+                    toBeDeleted.add(msg);
                 }
             }
+            folder.setFlags(toBeDeleted.toArray(new Message[toBeDeleted.size()]), new Flags(Flag.DELETED), true);
             
             // It is necessary to copy the message before saving it (the same problem in AbstractSendMessageHandler)
             message = new MimeMessage((MimeMessage)message);
