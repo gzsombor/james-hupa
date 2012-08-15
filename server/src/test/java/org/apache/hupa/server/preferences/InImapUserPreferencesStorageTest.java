@@ -145,7 +145,7 @@ public class InImapUserPreferencesStorageTest extends HupaGuiceTestCase {
             // The imap is saved asynchronously after a delay, so the folder exists after a while
             folder = store.getFolder(folderName);
             if (folder.exists())
-                assertTrue(folder.getMessageCount() == 0);
+                assertEquals(0, folder.getMessageCount());
             
             Thread.sleep(InImapUserPreferencesStorage.IMAP_SAVE_DELAY + 500);
             folder = store.getFolder(folderName);

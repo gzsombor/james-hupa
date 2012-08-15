@@ -19,16 +19,13 @@
 
 package org.apache.hupa.server.preferences;
 
-import com.google.inject.Inject;
-import com.google.inject.Provider;
+import javax.servlet.http.HttpSession;
 
 import org.apache.commons.logging.Log;
 import org.apache.hupa.server.IMAPStoreCache;
-import org.apache.hupa.shared.rpc.ContactsResult.Contact;
 
-import java.util.HashMap;
-
-import javax.servlet.http.HttpSession;
+import com.google.inject.Inject;
+import com.google.inject.Provider;
 
 /**
  * A preferences storage which uses session as repository data
@@ -42,29 +39,24 @@ public class InSessionUserPreferencesStorage extends UserPreferencesStorage {
         this.sessionProvider = sessionProvider;
     }
 
-    public void addContact(Contact... contacts) {
+    @Override
+    public UserPreferences getPreferences() {
         HttpSession session = sessionProvider.get();
-
-        @SuppressWarnings("unchecked")
-        HashMap<String, Contact> sessionContacts = (HashMap<String, Contact>)session.getAttribute(CONTACTS_ATTR);
-        if (sessionContacts==null) {
-            sessionContacts=new HashMap<String, Contact>();
-            session.setAttribute(CONTACTS_ATTR, sessionContacts);
-        }
-        
-        for(Contact contact: contacts) {
-            if (!sessionContacts.containsKey(contact.toKey())) {
-                sessionContacts.put(contact.toKey(), contact);
-            }
+        Object prefs = session.getAttribute(CONTACTS_ATTR);
+        if (prefs instanceof UserPreferences) {
+            return (UserPreferences) prefs;
+        } else {
+            UserPreferences up = new UserPreferences();
+            session.setAttribute(CONTACTS_ATTR, up);
+            return up;
         }
     }
-
-    public Contact[] getContacts() {
-        HttpSession session = sessionProvider.get();
-        
-        @SuppressWarnings("unchecked")
-        HashMap<String, Contact> sessionContacts = (HashMap<String, Contact>)session.getAttribute(CONTACTS_ATTR);
-
-        return sessionContacts == null ? new Contact[]{} : sessionContacts.values().toArray(new Contact[sessionContacts.size()]);
+    
+    @Override
+    public void storePreferences() {
+        UserPreferences preferences = getPreferences();
+        sessionProvider.get().setAttribute(CONTACTS_ATTR, preferences);
+        preferences.clearChanged();
     }
+    
 }

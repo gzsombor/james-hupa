@@ -36,6 +36,7 @@ import javax.mail.Flags;
 import javax.mail.Flags.Flag;
 import javax.mail.Folder;
 import javax.mail.Message;
+import javax.mail.MessageRemovedException;
 import javax.mail.MessagingException;
 import javax.mail.Multipart;
 import javax.mail.Session;
@@ -52,7 +53,6 @@ import org.apache.commons.logging.Log;
 import org.apache.hupa.server.IMAPStoreCache;
 import org.apache.hupa.server.utils.MessageUtils;
 import org.apache.hupa.shared.data.User;
-import org.apache.hupa.shared.rpc.ContactsResult.Contact;
 
 import com.google.inject.Inject;
 import com.google.inject.Provider;
@@ -73,7 +73,7 @@ public class InImapUserPreferencesStorage extends UserPreferencesStorage {
     // It's not final in order to override in tests to make them run faster
     protected static int IMAP_SAVE_DELAY = 10000;
     
-    protected static final String MAGIC_SUBJECT_CONTACTS = "Hupa-Contacts";
+    protected static final String MAGIC_SUBJECT_CONTACTS = "Hupa-Settings";
     
     private static final String HUPA_DATA_MIME_TYPE = "application/hupa-data";
 
@@ -163,9 +163,13 @@ public class InImapUserPreferencesStorage extends UserPreferencesStorage {
             
             List<Message> toBeDeleted = new ArrayList<Message>();
             for (Message msg : msgs) {
-                if (subject.equals(msg.getSubject())) {
-                	msg.setFlag(Flag.DELETED, true);
-                    toBeDeleted.add(msg);
+                try {
+                    if (subject.equals(msg.getSubject())) {
+                    	msg.setFlag(Flag.DELETED, true);
+                        toBeDeleted.add(msg);
+                    }
+                } catch (MessageRemovedException e) {
+                    logger.info("message removed : "+e.getMessage(), e);
                 }
             }
             folder.setFlags(toBeDeleted.toArray(new Message[toBeDeleted.size()]), new Flags(Flag.DELETED), true);
@@ -210,53 +214,36 @@ public class InImapUserPreferencesStorage extends UserPreferencesStorage {
         this.session = cache.getMailSession();
     }
 
-    /* (non-Javadoc)
-     * @see org.apache.hupa.server.preferences.UserPreferencesStorage#addContact(org.apache.hupa.shared.rpc.ContactsResult.Contact[])
-     */
-    @Override
-    public void addContact(Contact... contacts) {
-        HashMap<String, Contact> contactsHash = getContactsHash();
-
-        for (Contact contact : contacts) {
-            if (!contactsHash.containsKey(contact.toKey())) {
-                contactsHash.put(contact.toKey(), contact);
-                saveContactsAsync((User) sessionProvider.get().getAttribute(USER_ATTR), contactsHash);
-            }
-        }
-    }
     
-    /* (non-Javadoc)
-     * @see org.apache.hupa.server.preferences.UserPreferencesStorage#getContacts()
-     */
-    @Override
-    public Contact[] getContacts() {
-        HashMap<String, Contact> sessionContacts = getContactsHash();
-        return sessionContacts.values().toArray(new Contact[sessionContacts.size()]);
-    }
 
     /**
      * Returns the Hash of contacts getting it from the session if available, or from
      * the IMAP repository if it is the first time.
      */
-    @SuppressWarnings("unchecked")
-    private HashMap<String, Contact> getContactsHash() {
+    @Override
+    public UserPreferences getPreferences() {
         HttpSession session = sessionProvider.get();
-        HashMap<String, Contact> contactHash = (HashMap<String, Contact>) session.getAttribute(CONTACTS_ATTR);
+        UserPreferences contactHash = (UserPreferences) session.getAttribute(CONTACTS_ATTR);
         if (contactHash == null) {
             try {
                 User user = (User) sessionProvider.get().getAttribute("user");
                 IMAPStore iStore = cache.get(user);
                 Object o = readUserPreferencesFromIMAP(logger, user, iStore, user.getSettings().getDraftsFolderName(), MAGIC_SUBJECT_CONTACTS);
-                contactHash = o instanceof HashMap ? (HashMap<String, Contact>) o : new HashMap<String, Contact>();
+                contactHash = o instanceof UserPreferences ? (UserPreferences) o : new UserPreferences();
             } catch (Exception e) {
                 e.printStackTrace();
-                contactHash = new HashMap<String, Contact>();
+                contactHash = new UserPreferences();
             }
             session.setAttribute(CONTACTS_ATTR, contactHash);
         }
         return contactHash;
     }
 
+    @Override
+    public void storePreferences() {
+        saveContactsAsync((User) sessionProvider.get().getAttribute(USER_ATTR), getPreferences());
+    }
+    
     /**
      * Saves the contacts list in IMAP asynchronously, It is so because of two reasons:
      * 1.- User processes don't wait for it
@@ -265,7 +252,7 @@ public class InImapUserPreferencesStorage extends UserPreferencesStorage {
      *  added to the session list, and a thread is delayed to store
      *  all the block. 
      */
-    private void saveContactsAsync(User user, Map<String, Contact> contacts) {
+    private void saveContactsAsync(User user, UserPreferences contacts) {
         synchronized(toSave) {
             toSave.put(user, new SaveTask(user, contacts));
         }
@@ -306,20 +293,26 @@ public class InImapUserPreferencesStorage extends UserPreferencesStorage {
     
     private class SaveTask implements Runnable {
         User user;
-        Map<String, Contact> contacts;
+        UserPreferences preferences;
         
-        SaveTask(User user, Map<String, Contact> contacts) {
+        SaveTask(User user, UserPreferences preferences) {
             this.user = user;
-            this.contacts = contacts;
+            this.preferences = preferences;
         }
 
         @Override
         public void run() {
+            if (!preferences.isChanged()) {
+                logger.info("preference not changed for " + user.getName());
+                return;
+            }
             String folderName = user.getSettings().getDraftsFolderName();
             try {
-                saveUserPreferencesInIMAP(logger, user, session, cache.get(user), folderName, MAGIC_SUBJECT_CONTACTS, contacts);
+                logger.info("preference changed for " + user.getName());
+                saveUserPreferencesInIMAP(logger, user, session, cache.get(user), folderName, MAGIC_SUBJECT_CONTACTS, preferences);
+                preferences.clearChanged();
             } catch (Exception e) {
-                logger.error("saving preferece for " + user.getName()+ " error:"+e.getMessage(), e);
+                logger.error("saving preference for " + user.getName()+ " error:"+e.getMessage(), e);
             }
         }
         

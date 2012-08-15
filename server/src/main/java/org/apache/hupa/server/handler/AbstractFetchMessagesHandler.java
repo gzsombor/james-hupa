@@ -21,6 +21,9 @@ package org.apache.hupa.server.handler;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
 import javax.mail.Address;
 import javax.mail.FetchProfile;
@@ -37,6 +40,7 @@ import net.customware.gwt.dispatch.shared.ActionException;
 
 import org.apache.commons.logging.Log;
 import org.apache.hupa.server.IMAPStoreCache;
+import org.apache.hupa.server.preferences.UserPreferences;
 import org.apache.hupa.server.preferences.UserPreferencesStorage;
 import org.apache.hupa.server.utils.MessageUtils;
 import org.apache.hupa.shared.data.IMAPFolder;
@@ -126,80 +130,93 @@ public abstract class AbstractFetchMessagesHandler <A extends FetchMessages> ext
         }
         folder.fetch(messages, fp);
         
-        // loop over the fetched messages
-        for (int i = 0; i < messages.length && i < offset; i++) {
-            org.apache.hupa.shared.data.Message msg = new org.apache.hupa.shared.data.Message();
-            Message m = messages[i];                
-            String from = null;
-            if (m.getFrom() != null && m.getFrom().length >0 ) {
-                from = MessageUtils.decodeText(m.getFrom()[0].toString());
-            }
-            msg.setFrom(from);
-
-            String replyto = null;
-            if (m.getReplyTo() != null && m.getReplyTo().length >0 ) {
-                replyto = MessageUtils.decodeText(m.getReplyTo()[0].toString());
-            }
-            msg.setReplyto(replyto);
-            
-            ArrayList<String> to = new ArrayList<String>();
-            // Add to addresses
-            Address[] toArray = m.getRecipients(RecipientType.TO);
-            if (toArray != null) {
-                for (Address addr : toArray) {
-                    String mailTo = MessageUtils.decodeText(addr.toString());
-                    to.add(mailTo);
+        List<UserPreferences.ExtractedContacts> foundContacts = new ArrayList();
+        UserPreferences preferences = userPreferences.getPreferences();
+        synchronized(preferences) {
+            // loop over the fetched messages
+            for (int i = 0; i < messages.length && i < offset; i++) {
+                org.apache.hupa.shared.data.Message msg = new org.apache.hupa.shared.data.Message();
+                Message m = messages[i];                
+                String from = null;
+                if (m.getFrom() != null && m.getFrom().length >0 ) {
+                    from = MessageUtils.decodeText(m.getFrom()[0].toString());
                 }
-            }
-            msg.setTo(to);
-            
-            // Check if a subject exist and if so decode it
-            String subject = m.getSubject();
-            if (subject != null) {
-                subject = MessageUtils.decodeText(subject);
-            }
-            msg.setSubject(subject);
-            
-            // Add cc addresses
-            Address[] ccArray = m.getRecipients(RecipientType.CC);
-            ArrayList<String> cc = new ArrayList<String>();
-            if (ccArray != null) {
-                for (Address addr : ccArray) {
-                    String mailCc = MessageUtils.decodeText(addr.toString());
-                    cc.add(mailCc);
-                }            	
-            }
-            msg.setCc(cc);
-
-            userPreferences.addContact(from);
-            userPreferences.addContact(to);
-            userPreferences.addContact(replyto);
-            userPreferences.addContact(cc);
-
-            // Using sentDate since received date is not useful in the view when using fetchmail
-            msg.setReceivedDate(m.getSentDate());
-
-            // Add flags
-            ArrayList<IMAPFlag> iFlags = JavamailUtil.convert(m.getFlags());
-          
-            ArrayList<Tag> tags = new ArrayList<Tag>();
-            for (String flag : m.getFlags().getUserFlags()) {
-                if (flag.startsWith(Tag.PREFIX)) {
-                    tags.add(new Tag(flag.substring(Tag.PREFIX.length())));
+                msg.setFrom(from);
+    
+                String replyto = null;
+                if (m.getReplyTo() != null && m.getReplyTo().length >0 ) {
+                    replyto = MessageUtils.decodeText(m.getReplyTo()[0].toString());
                 }
+                msg.setReplyto(replyto);
+                
+                ArrayList<String> to = new ArrayList<String>();
+                // Add to addresses
+                Address[] toArray = m.getRecipients(RecipientType.TO);
+                if (toArray != null) {
+                    for (Address addr : toArray) {
+                        String mailTo = MessageUtils.decodeText(addr.toString());
+                        to.add(mailTo);
+                    }
+                }
+                msg.setTo(to);
+                
+                // Check if a subject exist and if so decode it
+                String subject = m.getSubject();
+                if (subject != null) {
+                    subject = MessageUtils.decodeText(subject);
+                }
+                msg.setSubject(subject);
+                
+                // Add cc addresses
+                Address[] ccArray = m.getRecipients(RecipientType.CC);
+                ArrayList<String> cc = new ArrayList<String>();
+                if (ccArray != null) {
+                    for (Address addr : ccArray) {
+                        String mailCc = MessageUtils.decodeText(addr.toString());
+                        cc.add(mailCc);
+                    }            	
+                }
+                msg.setCc(cc);
+    
+                if (m.getSentDate() != null && !preferences.isScannedYet(folder.getFullName(), m.getSentDate())) {
+                    UserPreferences.ExtractedContacts c = new UserPreferences.ExtractedContacts(folder.getFullName(), m.getSentDate());
+                    Set<String> names = new HashSet<String>();
+                    names.add(from);
+                    names.add(replyto);
+                    names.addAll(to);
+                    names.addAll(cc);
+                    foundContacts.add(c.add(names));
+                }
+    
+                // Using sentDate since received date is not useful in the view when using fetchmail
+                msg.setReceivedDate(m.getSentDate());
+    
+                // Add flags
+                ArrayList<IMAPFlag> iFlags = JavamailUtil.convert(m.getFlags());
+              
+                ArrayList<Tag> tags = new ArrayList<Tag>();
+                for (String flag : m.getFlags().getUserFlags()) {
+                    if (flag.startsWith(Tag.PREFIX)) {
+                        tags.add(new Tag(flag.substring(Tag.PREFIX.length())));
+                    }
+                }
+                
+                msg.setUid(folder.getUID(m));
+                msg.setFlags(iFlags);
+                msg.setTags(tags);
+                try {
+                    msg.setHasAttachments(hasAttachment(m));
+                } catch (MessagingException e) {
+                    logger.debug("Unable to identify attachments in message UID:" + msg.getUid() + " subject:" + msg.getSubject() + " cause:" + e.getMessage());
+                    logger.info("");
+                }
+                mList.add(0, msg);
+                
             }
-            
-            msg.setUid(folder.getUID(m));
-            msg.setFlags(iFlags);
-            msg.setTags(tags);
-            try {
-                msg.setHasAttachments(hasAttachment(m));
-            } catch (MessagingException e) {
-                logger.debug("Unable to identify attachments in message UID:" + msg.getUid() + " subject:" + msg.getSubject() + " cause:" + e.getMessage());
-                logger.info("");
+            for (UserPreferences.ExtractedContacts c : foundContacts) {
+                preferences.addContact(c);
             }
-            mList.add(0, msg);
-            
+            userPreferences.storePreferences();
         }
         return mList;
     }

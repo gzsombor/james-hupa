@@ -20,6 +20,7 @@
 package org.apache.hupa.shared.rpc;
 
 import java.io.Serializable;
+import java.util.Date;
 
 import net.customware.gwt.dispatch.shared.Result;
 
@@ -29,6 +30,10 @@ public class ContactsResult implements Result, Serializable {
 		private static final long serialVersionUID = -8632580327693416473L;
 		public String mail;
 		public String realname;
+		public int used;
+		public int seen;
+		public Date lastUsed;
+		public Date lastSeen;
 
 		public Contact() {
 		}
@@ -60,6 +65,15 @@ public class ContactsResult implements Result, Serializable {
 
 		public String toKey() {
 			return toString().replaceAll("[^\\w\\d<@>]+", "").toLowerCase();
+		}
+		
+		public boolean seenAt(Date date) {
+		    if (lastSeen == null || lastSeen.before(date)) {
+		        lastSeen = date;
+		        return true;
+		    } else {
+		        return false;
+		    }
 		}
 
 	}

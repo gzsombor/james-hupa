@@ -52,6 +52,7 @@ import org.apache.commons.fileupload.FileItem;
 import org.apache.commons.logging.Log;
 import org.apache.hupa.server.FileItemRegistry;
 import org.apache.hupa.server.IMAPStoreCache;
+import org.apache.hupa.server.preferences.UserPreferences;
 import org.apache.hupa.server.preferences.UserPreferencesStorage;
 import org.apache.hupa.server.utils.MessageUtils;
 import org.apache.hupa.server.utils.RegexPatterns;
@@ -141,9 +142,11 @@ public abstract class AbstractSendMessageHandler<A extends SendMessage> extends 
         SMTPMessage m = action.getMessage();
         message.setFrom(new InternetAddress(m.getFrom()));
 
-        userPreferences.addContact(m.getTo());
-        userPreferences.addContact(m.getCc());
-        userPreferences.addContact(m.getBcc());
+        UserPreferences.ExtractedContacts c = new UserPreferences.ExtractedContacts();
+        c.add(m.getTo()).add(m.getCc()).add(m.getBcc());
+        
+        userPreferences.getPreferences().addContact(c);
+        userPreferences.storePreferences();
 
         message.setRecipients(RecipientType.TO, MessageUtils.getRecipients(m.getTo()));
         message.setRecipients(RecipientType.CC, MessageUtils.getRecipients(m.getCc()));

@@ -21,9 +21,6 @@ package org.apache.hupa.server.preferences;
 
 import org.apache.hupa.shared.rpc.ContactsResult.Contact;
 
-import java.util.Arrays;
-import java.util.List;
-
 /**
  *
  * Abstract class which defines storage operations related 
@@ -40,36 +37,56 @@ public abstract class UserPreferencesStorage {
      * Add a new contact to the list.
      * The implementation has to check for duplicates 
      */
-    abstract public void addContact(Contact... c);
+//    abstract public void addContact(Contact... c);
     
     /**
      * Add a new contact to the list.
      * The implementation has to check for duplicates 
      */
-    final public void addContact(String... mails) {
-        if (mails != null) {
-            addContact(Arrays.asList(mails));
-        }
-    }
+//    final public void addContact(String... mails) {
+//        if (mails != null) {
+//            addContact(Arrays.asList(mails));
+//        }
+//    }
 
     /**
      * Add a new contact to the list.
      * The implementation has to check for duplicates 
      */
-    final public void addContact(List<String> mails) {
-        if (mails != null) {
-            for (String mail: mails) {
-            	if (mail != null && !mail.matches(REGEX_OMITTED_EMAILS)) {
-                    Contact contact = new Contact(mail);
-                    addContact(contact);
-            	}
-            }
-        }
-    }
+//    final public void addContact(List<String> mails) {
+//        if (mails != null) {
+//            for (String mail: mails) {
+//            	if (mail != null && !mail.matches(REGEX_OMITTED_EMAILS)) {
+//                    Contact contact = new Contact(mail);
+//                    addContact(contact);
+//            	}
+//            }
+//        }
+//    }
+    
+    
+    
     
     /**
      * Get the list of contacts 
      */
-    abstract public Contact[] getContacts();
+    public Contact[] getContacts() {
+        return getPreferences().getAllContacts();
+    }
+    
+    public void storePreferences() {
+        
+    }
+    
+    abstract public UserPreferences getPreferences();
 
+    @Deprecated
+    public void addContact(String mailInfo) {
+        getPreferences().addContact(mailInfo);
+    }
+
+    @Deprecated
+    public void addContact(Contact... c) {
+        getPreferences().addContact(c);
+    }
 }
